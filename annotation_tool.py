@@ -33,37 +33,58 @@ class CsvAnnotationApp:
         style = ttk.Style()
         style.theme_use('clam')
         style.configure('TButton', font=('Helvetica', 10, 'bold'), padding=5)
-        style.configure('success.TButton', background='green', foreground='white')
+        style.configure('success.TButton', background='green', foreground='white', font=('Helvetica', 10, 'bold'), padding=5)
         style.configure('nav.TButton', font=('Helvetica', 10), padding=5)
         style.configure('TLabel', font=('Helvetica', 10))
         style.configure('Header.TLabel', font=('Helvetica', 14, 'bold'))
         style.configure('Status.TLabel', font=('Helvetica', 10, 'italic'))
 
-        # --- ADD THIS ---
         # Style for the currently selected annotation button
         style.configure('Selected.TButton', font=('Helvetica', 10, 'bold'), padding=5, background="#a9d1de")
-        # ---------------
+
 
         # --- Main Frame ---
-        main_frame = ttk.Frame(root, padding="15")
+        main_frame = ttk.Frame(root, padding="10 10 10 10")
         main_frame.pack(fill="both", expand=True)
 
-        # --- 1. File Loading Frame ---
+        # --- 1. File Frame ---
         file_frame = ttk.Frame(main_frame)
-        file_frame.pack(fill="x", pady=(0, 10))
+        file_frame.pack(fill="x")
 
-        self.load_button = ttk.Button(file_frame, text="Load CSV", command=self.load_csv)
-        self.load_button.pack(side="left", padx=(0, 10))
+        load_button = ttk.Button(file_frame, text="Load CSV", command=self.load_csv)
+        load_button.pack(side="left", padx=(0, 10))
 
-        self.file_label = ttk.Label(file_frame, text="No file loaded.", anchor="w")
+        self.file_label = ttk.Label(file_frame, text="No file loaded.", style='Status.TLabel', anchor="w")
         self.file_label.pack(side="left", fill="x", expand=True)
 
-        # --- 2. Progress Frame ---
-        progress_frame = ttk.Frame(main_frame)
-        progress_frame.pack(fill="x", pady=(5, 10))
+        # --- 2. Progress and Jump Frame ---
+        progress_frame = ttk.Frame(main_frame, padding=(0, 10, 0, 10))
+        progress_frame.pack(fill="x")
 
-        self.progress_label = ttk.Label(progress_frame, text="Row 0 / 0", style='Header.TLabel', anchor="center")
-        self.progress_label.pack(fill="x")
+        self.progress_label = ttk.Label(progress_frame, text="Row 0 / 0", style='Header.TLabel', anchor="w")
+        self.progress_label.pack(side="left", pady=5)
+
+        # --- Additions for Jump to Row ---
+        self.jump_button = ttk.Button(
+            progress_frame,
+            text="Go",
+            command=self.jump_to_row_event,
+            style='nav.TButton'
+        )
+        self.jump_button.pack(side="right", padx=(5, 0))
+
+        self.jump_entry = ttk.Entry(
+            progress_frame,
+            width=8,
+            font=('Helvetica', 10)
+        )
+        self.jump_entry.pack(side="right", padx=5)
+        # Bind the <Return> key to the jump function
+        self.jump_entry.bind("<Return>", self.jump_to_row_event)
+
+        jump_label = ttk.Label(progress_frame, text="Jump to Row:")
+        jump_label.pack(side="right")
+        # --- End Additions ---
 
         # --- 3. Data Display Frame ---
         display_frame = ttk.Frame(main_frame)
@@ -71,26 +92,22 @@ class CsvAnnotationApp:
 
         # Add scrollbars to the Text widget
         text_scrollbar_y = ttk.Scrollbar(display_frame, orient="vertical")
-        # text_scrollbar_x = ttk.Scrollbar(display_frame, orient="horizontal") # Removed horizontal scrollbar
 
         self.text_display = tk.Text(
             display_frame,
             height=20,
             width=80,
-            wrap="word",  # Changed from "none" to "word" for email body
-            font=("Calibri", 12),
+            wrap="word",  # Wrap text for email body
+            font=("Calibri", 12), # Configurable font
             bg="#fdfdfd",
             relief="solid",
             borderwidth=1,
-            yscrollcommand=text_scrollbar_y.set,
-            # xscrollcommand=text_scrollbar_x.set # Removed horizontal scrollbar command
+            yscrollcommand=text_scrollbar_y.set
         )
 
         text_scrollbar_y.config(command=self.text_display.yview)
-        # text_scrollbar_x.config(command=self.text_display.xview) # Removed
 
         text_scrollbar_y.pack(side="right", fill="y")
-        # text_scrollbar_x.pack(side="bottom", fill="x") # Removed
         self.text_display.pack(side="left", fill="both", expand=True)
 
         # --- 4. Annotation Buttons Frame ---
@@ -144,7 +161,7 @@ class CsvAnnotationApp:
         classes_str = simpledialog.askstring(
             "Setup",
             "Enter your classification labels, separated by a comma:",
-            initialvalue="Deceptive, Targeted, Extortion/Blackmail" # Changed labels
+            initialvalue="Deceptive, Targeted, Extortion/Blackmail" # Updated labels
         )
         if classes_str:
             return [label.strip() for label in classes_str.split(',') if label.strip()]
@@ -161,7 +178,7 @@ class CsvAnnotationApp:
             return
 
         try:
-            # --- NEW ROBUST LOADING ---
+            # --- ROBUST LOADING ---
             # Try loading with default UTF-8 first
             try:
                 self.df = pd.read_csv(
@@ -181,14 +198,13 @@ class CsvAnnotationApp:
                     engine='python',
                     encoding='latin1'       # Try a different encoding
                 )
-            # --- END NEW ROBUST LOADING ---
+            # --- END ROBUST LOADING ---
 
             # Check if annotation column exists, if not, create it
             if self.annotation_column not in self.df.columns:
                 self.df[self.annotation_column] = pd.NA
 
             # Fill Na/NaN with pd.NA for consistent handling
-            # We use pd.NA (pandas's newer, better NA)
             self.df[self.annotation_column] = self.df[self.annotation_column].replace('', pd.NA).fillna(pd.NA)
 
             self.filepath = filepath
@@ -232,14 +248,6 @@ class CsvAnnotationApp:
         except Exception as e:
             display_text = f"An error occurred displaying data: {e}"
 
-        # max_col_width = max(len(col) for col in self.df.columns if col != self.annotation_column) + 3 # Removed
-
-        # for col, value in row_data.items(): # Removed loop
-        #     if col != self.annotation_column:
-        #         # Add padding to align values
-        #         padding = " " * (max_col_width - len(col))
-        #         display_text += f"{col.upper()}:{padding}{value}\n\n"
-
         # Update text widget
         self.text_display.config(state="normal")
         self.text_display.delete("1.0", "end")
@@ -250,7 +258,7 @@ class CsvAnnotationApp:
         current_annotation = row_data.get(self.annotation_column)
 
         for label, btn in self.annotation_buttons.items():
-            # This check is now robust against pd.NA
+            # Robust check for pd.NA
             if pd.notna(current_annotation) and label == current_annotation:
                 btn.config(style='Selected.TButton') # Apply the selected style
             else:
@@ -291,6 +299,40 @@ class CsvAnnotationApp:
             self.current_index -= 1
             self.update_display()
 
+    def jump_to_row_event(self, event=None):
+        """
+        Handles the 'Go' button click or <Return> key press to jump to a row.
+        """
+        if self.df is None:
+            return
+
+        try:
+            # Get row number from entry box (user will enter 1-based)
+            row_str = self.jump_entry.get()
+            if not row_str:
+                return
+
+            row_num = int(row_str)
+
+            # Validate range
+            if 1 <= row_num <= self.total_rows:
+                # Convert 1-based user input to 0-based index
+                self.current_index = row_num - 1
+                self.update_display()
+            else:
+                messagebox.showwarning(
+                    "Invalid Row",
+                    f"Please enter a row number between 1 and {self.total_rows}."
+                )
+        except ValueError:
+            messagebox.showerror(
+                "Invalid Input",
+                "Please enter a valid number."
+            )
+        finally:
+            # Clear the entry box
+            self.jump_entry.delete(0, "end")
+
     def save_csv(self):
         """
         Saves the DataFrame with annotations to a new CSV file.
@@ -322,7 +364,7 @@ class CsvAnnotationApp:
         if self.df is not None and self.filepath:
             try:
                 self.df.to_csv(self.filepath, index=False)
-                print(f"Auto-saved progress to {self.filepath}")
+                # print(f"Auto-saved progress to {self.filepath}") # Optional: for debugging
             except Exception as e:
                 print(f"Auto-save failed: {e}")
 
@@ -333,6 +375,9 @@ class CsvAnnotationApp:
         self.prev_button.config(state="disabled")
         self.next_button.config(state="disabled")
         self.save_button.config(state="disabled")
+        self.jump_button.config(state="disabled")
+        self.jump_entry.config(state="disabled")
+
         self.text_display.config(state="normal")
         self.text_display.delete("1.0", "end")
         self.text_display.insert("1.0", "Please load a CSV file to begin.")
@@ -343,7 +388,10 @@ class CsvAnnotationApp:
         for btn in self.annotation_buttons.values():
             btn.config(state="normal")
         self.save_button.config(state="normal")
+        self.jump_button.config(state="normal")
+        self.jump_entry.config(state="normal")
         # Nav buttons are enabled/disabled by update_display()
+        self.update_display()
 
 
 # --- Main execution ---
@@ -351,8 +399,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = CsvAnnotationApp(root)
     root.mainloop()
-
-
-
-
 
