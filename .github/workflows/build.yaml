@@ -36,7 +36,7 @@ jobs:
     # 5. Uploads the final .app file as an "artifact"
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
-      with:    
+      with:
         name: annotation_tool-macOS
-        path: .annotation_tool.app
+        path: ./dist/annotation_tool.app
         # Note: PyInstaller puts the final build in a folder named 'dist'
