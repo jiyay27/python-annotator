@@ -31,7 +31,7 @@ jobs:
     # 4. Runs PyInstaller to create the .app
     - name: Build macOS App with PyInstaller
       run: |
-        pyinstaller --noconfirm --windowed --onefile --icon=icon.icns --name="annotation_tool" annotation_tool.py
+        pyinstaller --noconfirm --windowed --onefile --icon=icon.icns annotation_tool.py
 
     # 5. Uploads the final .app file as an "artifact"
     - name: Upload Artifact
