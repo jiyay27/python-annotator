@@ -67,8 +67,36 @@ class CsvAnnotationApp:
         load_button = ttk.Button(file_frame, text="Load CSV", command=self.load_csv)
         load_button.pack(side="left", padx=(0, 10))
 
+        # Navigation buttons next to Load CSV
+        self.prev_button = ttk.Button(
+            file_frame, text="< Previous", command=self.prev_row, style='nav.TButton'
+        )
+        self.prev_button.pack(side="left", padx=5)
+
+        self.skip_button = ttk.Button(
+            file_frame, text="Skip", command=self.skip_email, style='skip.TButton'
+        )
+        self.skip_button.pack(side="left", padx=5)
+
+        self.next_button = ttk.Button(
+            file_frame, text="Next >", command=self.next_row, style='nav.TButton'
+        )
+        self.next_button.pack(side="left", padx=5)
+
+        # Skipped emails dropdown
+        ttk.Label(file_frame, text="Skipped:", font=('Helvetica', 9)).pack(side="left", padx=(10, 5))
+        
+        self.skipped_combobox = ttk.Combobox(
+            file_frame,
+            state="readonly",
+            width=15,
+            font=('Helvetica', 9)
+        )
+        self.skipped_combobox.pack(side="left", padx=5)
+        self.skipped_combobox.bind("<<ComboboxSelected>>", self.jump_to_skipped_from_dropdown)
+
         self.file_label = ttk.Label(file_frame, text="No file loaded.", style='Status.TLabel', anchor="w")
-        self.file_label.pack(side="left", fill="x", expand=True)
+        self.file_label.pack(side="left", fill="x", expand=True, padx=(10, 0))
 
         # --- 2. Progress and Status Frame ---
         progress_frame = ttk.Frame(main_frame, padding=(0, 10, 0, 10))
@@ -165,52 +193,7 @@ class CsvAnnotationApp:
             buttons_subframe.grid_columnconfigure(i, weight=1)
             self.annotation_buttons[class_num] = btn
 
-        # --- 6. Navigation Frame ---
-        nav_frame = ttk.Frame(main_frame)
-        nav_frame.pack(fill="x", pady=10)
-
-        self.prev_button = ttk.Button(
-            nav_frame, text="< Previous", command=self.prev_row, style='nav.TButton'
-        )
-        self.prev_button.pack(side="left", expand=True, fill="x", padx=5)
-
-        self.skip_button = ttk.Button(
-            nav_frame, text="Skip (Mark for Review)", command=self.skip_email, style='skip.TButton'
-        )
-        self.skip_button.pack(side="left", expand=True, fill="x", padx=5)
-
-        self.next_button = ttk.Button(
-            nav_frame, text="Next >", command=self.next_row, style='nav.TButton'
-        )
-        self.next_button.pack(side="right", expand=True, fill="x", padx=5)
-
-        # --- 7. Skipped Navigation Frame ---
-        skipped_nav_frame = ttk.Frame(main_frame)
-        skipped_nav_frame.pack(fill="x", pady=(5, 10))
-
-        # Skipped label
-        skipped_label = ttk.Label(skipped_nav_frame, text="Skipped Emails:", font=('Helvetica', 10, 'bold'))
-        skipped_label.pack(side="left", padx=(0, 5))
-
-        # Dropdown for skipped emails
-        self.skipped_combobox = ttk.Combobox(
-            skipped_nav_frame,
-            state="readonly",
-            width=30,
-            font=('Helvetica', 10)
-        )
-        self.skipped_combobox.pack(side="left", padx=5, fill="x", expand=True)
-        self.skipped_combobox.bind("<<ComboboxSelected>>", self.jump_to_skipped_from_dropdown)
-
-        self.goto_next_skipped_button = ttk.Button(
-            skipped_nav_frame,
-            text="Go to Next Skipped",
-            command=self.goto_next_skipped,
-            style='warning.TButton'
-        )
-        self.goto_next_skipped_button.pack(side="right", padx=5)
-
-        # --- 8. Save Frame ---
+        # --- 6. Save Frame ---
         save_frame = ttk.Frame(main_frame)
         save_frame.pack(fill="x", pady=(10, 0))
 
@@ -415,7 +398,6 @@ class CsvAnnotationApp:
         # Update nav button states
         self.prev_button.config(state="normal" if self.current_index > 0 else "disabled")
         self.next_button.config(state="normal" if self.current_index < self.total_rows - 1 else "disabled")
-        self.goto_next_skipped_button.config(state="normal" if len(self.skipped_indices) > 0 else "disabled")
 
     def update_stats(self):
         """
@@ -647,8 +629,22 @@ class CsvAnnotationApp:
         self.jump_button.config(state="disabled")
         self.jump_entry.config(state="disabled")
         self.note_entry.config(state="disabled")
-        self.view_skipped_button.config(state="disabled")
-        self.goto_next_skipped_button.config(state="disabled")
+        # Some controls may not exist yet depending on init order; guard with hasattr
+        if hasattr(self, 'view_skipped_button') and self.view_skipped_button is not None:
+            try:
+                self.view_skipped_button.config(state="disabled")
+            except Exception:
+                pass
+        if hasattr(self, 'skipped_combobox') and self.skipped_combobox is not None:
+            try:
+                self.skipped_combobox.config(state="disabled")
+            except Exception:
+                pass
+        if hasattr(self, 'goto_next_skipped_button') and self.goto_next_skipped_button is not None:
+            try:
+                self.goto_next_skipped_button.config(state="disabled")
+            except Exception:
+                pass
 
         self.text_display.config(state="normal")
         self.text_display.delete("1.0", "end")
@@ -665,7 +661,17 @@ class CsvAnnotationApp:
         self.jump_button.config(state="normal")
         self.jump_entry.config(state="normal")
         self.note_entry.config(state="normal")
-        self.view_skipped_button.config(state="normal")
+        # Guard optional controls
+        if hasattr(self, 'view_skipped_button') and self.view_skipped_button is not None:
+            try:
+                self.view_skipped_button.config(state="normal")
+            except Exception:
+                pass
+        if hasattr(self, 'skipped_combobox') and self.skipped_combobox is not None:
+            try:
+                self.skipped_combobox.config(state="readonly")
+            except Exception:
+                pass
         # Nav and goto_next_skipped buttons are managed by update_display()
         self.update_display()
 
