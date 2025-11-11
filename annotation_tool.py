@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
 import pandas as pd
-import sys
+# import sys
 
 class CsvAnnotationApp:
     """
@@ -12,10 +12,10 @@ class CsvAnnotationApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Phishing Email Annotation Tool")
-        
+
         # Maximize window to full screen
         self.root.state('zoomed')  # Windows: maximized
-        
+
         # Set minimum size
         self.root.minsize(1200, 800)
 
@@ -31,11 +31,12 @@ class CsvAnnotationApp:
 
         # --- Configuration ---
         # Phishing taxonomy classes (0-3 based on guidelines)
-        self.annotation_classes = ["0", "1", "2", "3"]
+        # self.annotation_classes = ["0", "1", "2", "3"]
+        self.annotation_classes = ["1", "2", "3"]
         self.class_labels = {
-            "0": "0: Legitimate",
+            # "0": "0: Legitimate",
             "1": "1: Deceptive",
-            "2": "2: Targeted", 
+            "2": "2: Targeted",
             "3": "3: Extortion"
         }
 
@@ -85,7 +86,7 @@ class CsvAnnotationApp:
 
         # Skipped emails dropdown
         ttk.Label(file_frame, text="Skipped:", font=('Helvetica', 9)).pack(side="left", padx=(10, 5))
-        
+
         self.skipped_combobox = ttk.Combobox(
             file_frame,
             state="readonly",
@@ -199,7 +200,7 @@ class CsvAnnotationApp:
 
         # Progress statistics
         self.stats_label = ttk.Label(
-            save_frame, 
+            save_frame,
             text="Annotated: 0 / 0 (0.0%)",
             style='Status.TLabel',
             anchor="w"
@@ -207,7 +208,7 @@ class CsvAnnotationApp:
         self.stats_label.pack(fill="x", pady=(0, 5))
 
         self.save_button = ttk.Button(
-            save_frame, text="💾 Save Progress (Auto-saves every 10 annotations)", 
+            save_frame, text="💾 Save Progress (Auto-saves every 10 annotations)",
             command=self.manual_save, style='success.TButton'
         )
         self.save_button.pack(fill="x")
@@ -264,7 +265,7 @@ class CsvAnnotationApp:
             self.filepath = filepath
             self.file_label.config(text=f"Loaded: {self.filepath.split('/')[-1]}")
             self.total_rows = len(self.df)
-            
+
             # Load previously skipped emails from CSV
             self.skipped_indices = set(self.df[self.df[self.skip_column] == 1].index.tolist())
 
@@ -285,7 +286,7 @@ class CsvAnnotationApp:
             if self.current_index > 0:
                 annotated_count = self.df[self.annotation_column].notna().sum()
                 messagebox.showinfo(
-                    "Resuming Progress", 
+                    "Resuming Progress",
                     f"Loaded {self.total_rows} emails.\n\n"
                     f"✅ Found {annotated_count} already annotated.\n"
                     f"📍 Resuming from email #{self.current_index + 1}\n\n"
@@ -293,7 +294,7 @@ class CsvAnnotationApp:
                 )
             else:
                 messagebox.showinfo(
-                    "Success", 
+                    "Success",
                     f"Loaded {self.total_rows} emails.\n\n"
                     f"Auto-save enabled - progress saved every 10 annotations."
                 )
@@ -309,10 +310,10 @@ class CsvAnnotationApp:
         """
         if self.df is None or len(self.df) == 0:
             return 0
-        
+
         # Find first row where phishing_type is not annotated (NA/empty)
         unannotated_mask = self.df[self.annotation_column].isna()
-        
+
         if unannotated_mask.any():
             # Return the index of the first unannotated row
             first_unannotated = unannotated_mask.idxmax()
@@ -348,9 +349,9 @@ class CsvAnnotationApp:
             else:
                 first_col_name = self.df.columns[0]
                 email_body = row_data[first_col_name]
-            
+
             display_text = str(email_body) if pd.notna(email_body) else "[No email content]"
-            
+
             # Add metadata if available
             metadata = []
             if 'sender' in self.df.columns and pd.notna(row_data.get('sender')):
@@ -361,10 +362,10 @@ class CsvAnnotationApp:
                 metadata.append(f"Subject: {row_data['subject']}")
             if 'source_dataset' in self.df.columns and pd.notna(row_data.get('source_dataset')):
                 metadata.append(f"Source: {row_data['source_dataset']}")
-            
+
             if metadata:
                 display_text = "\n".join(metadata) + "\n" + "="*80 + "\n\n" + display_text
-                
+
         except Exception as e:
             display_text = f"Error displaying email: {e}"
 
@@ -405,11 +406,11 @@ class CsvAnnotationApp:
         """
         if self.df is None:
             return
-        
+
         # Count annotated emails (non-null phishing_type)
         annotated_count = self.df[self.annotation_column].notna().sum()
         percentage = (annotated_count / self.total_rows * 100) if self.total_rows > 0 else 0
-        
+
         self.stats_label.config(
             text=f"Annotated: {annotated_count} / {self.total_rows} ({percentage:.1f}%) | Skipped: {len(self.skipped_indices)}"
         )
@@ -422,7 +423,7 @@ class CsvAnnotationApp:
             return
 
         note_text = self.note_entry.get().strip()
-        
+
         if note_text:
             self.df.at[self.current_index, self.note_column] = note_text
             messagebox.showinfo("Note Saved", "Note saved successfully!")
@@ -430,7 +431,7 @@ class CsvAnnotationApp:
             # Clear note if entry is empty
             self.df.at[self.current_index, self.note_column] = pd.NA
             messagebox.showinfo("Note Cleared", "Note cleared.")
-        
+
         # Auto-save
         self.auto_save()
         self.update_stats()
@@ -444,16 +445,16 @@ class CsvAnnotationApp:
 
         # Add to skipped set
         self.skipped_indices.add(self.current_index)
-        
+
         # Mark in DataFrame
         self.df.at[self.current_index, self.skip_column] = 1
-        
+
         # Update dropdown
         self.update_skipped_dropdown()
-        
+
         # Auto-save to persist the skip flag
         self.auto_save()
-        
+
         # Move to next
         self.next_row()
 
@@ -494,9 +495,9 @@ class CsvAnnotationApp:
 
         skipped_list = sorted(list(self.skipped_indices))
         skipped_rows = [str(idx + 1) for idx in skipped_list]  # Convert to 1-based
-        
+
         message = f"Skipped emails (Row numbers):\n\n{', '.join(skipped_rows)}\n\nTotal: {len(skipped_list)}"
-        
+
         messagebox.showinfo("Skipped Emails", message)
 
     def goto_next_skipped(self):
@@ -509,17 +510,17 @@ class CsvAnnotationApp:
 
         # Find next skipped index after current position
         skipped_list = sorted(list(self.skipped_indices))
-        
+
         next_skipped = None
         for idx in skipped_list:
             if idx > self.current_index:
                 next_skipped = idx
                 break
-        
+
         # If no skipped after current, wrap to first skipped
         if next_skipped is None:
             next_skipped = skipped_list[0]
-        
+
         self.current_index = next_skipped
         self.update_display()
 
@@ -531,7 +532,7 @@ class CsvAnnotationApp:
             return
 
         self.df.at[self.current_index, self.annotation_column] = label
-        
+
         # Remove from skipped set if it was skipped and clear skip flag
         if self.current_index in self.skipped_indices:
             self.skipped_indices.remove(self.current_index)
